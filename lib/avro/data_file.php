@@ -164,7 +164,7 @@ class AvroDataIO
    * @param AvroSchema $schema
    * @return AvroDataIOWriter
    */
-  protected function open_writer($io, $schema)
+  protected static function open_writer($io, $schema)
   {
     $writer = new AvroIODatumWriter($schema);
     return new AvroDataIOWriter($io, $writer, $schema);
@@ -175,7 +175,7 @@ class AvroDataIO
    * @param AvroSchema $schema
    * @return AvroDataIOReader
    */
-  protected function open_reader($io, $schema)
+  protected static function open_reader($io, $schema)
   {
     $reader = new AvroIODatumReader(null, $schema);
     return new AvroDataIOReader($io, $reader);
