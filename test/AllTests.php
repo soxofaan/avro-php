@@ -26,6 +26,7 @@ require_once('LongEncodingTest.php');
 require_once('FloatIntEncodingTest.php');
 require_once('DatumIOTest.php');
 require_once('ProtocolFileTest.php');
+require_once('FileIOTest.php');
 // InterOpTest tests are run separately.
 
 /**
@@ -48,6 +49,7 @@ class AllTests
     $suite->addTestSuite('FloatIntEncodingTest');
     $suite->addTestSuite('DatumIOTest');
     $suite->addTestSuite('ProtocolFileTest');
+    $suite->addTestSuite('FileIOTest');
     return $suite;
   }
 }

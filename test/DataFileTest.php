@@ -57,8 +57,7 @@ class DataFileTest extends PHPUnit_Framework_TestCase
 
   protected function remove_data_files()
   {
-    if (self::REMOVE_DATA_FILES
-        && 0 < count($this->data_files))
+    if (self::REMOVE_DATA_FILES && $this->data_files)
       foreach ($this->data_files as $data_file)
         $this->remove_data_file($data_file);
   }
@@ -82,9 +81,9 @@ class DataFileTest extends PHPUnit_Framework_TestCase
     $dw->close();
 
     $dr = AvroDataIO::open_file($data_file);
-    $read_data = array_shift($dr->data());
+    $data = $dr->data();
     $dr->close();
-    $this->assertEquals(null, $read_data);
+    $this->assertEmpty($data);
   }
 
   public function test_write_read_null_round_trip()
@@ -97,7 +96,8 @@ class DataFileTest extends PHPUnit_Framework_TestCase
     $dw->close();
 
     $dr = AvroDataIO::open_file($data_file);
-    $read_data = array_shift($dr->data());
+    $read_data = $dr->data();
+    $read_data = reset($read_data);
     $dr->close();
     $this->assertEquals($data, $read_data);
   }
@@ -112,7 +112,8 @@ class DataFileTest extends PHPUnit_Framework_TestCase
     $dw->close();
 
     $dr = AvroDataIO::open_file($data_file);
-    $read_data = array_shift($dr->data());
+    $read_data = $dr->data();
+    $read_data = reset($read_data);
     $dr->close();
     $this->assertEquals($data, $read_data);
   }
@@ -130,7 +131,8 @@ class DataFileTest extends PHPUnit_Framework_TestCase
     $dw->close();
 
     $dr = AvroDataIO::open_file($data_file);
-    $read_data = array_shift($dr->data());
+    $read_data = $dr->data();
+    $read_data = reset($read_data);
     $dr->close();
     $this->assertEquals($data, $read_data);
 
@@ -146,9 +148,10 @@ class DataFileTest extends PHPUnit_Framework_TestCase
     $dw->close();
 
     $dr = AvroDataIO::open_file($data_file);
-    $read_datum = array_shift($dr->data());
+    $read_data = $dr->data();
+    $read_data = reset($read_data);
     $dr->close();
-    $this->assertEquals($datum, $read_datum);
+    $this->assertEquals($datum, $read_data);
   }
 
   public function test_write_read_false_round_trip()
@@ -161,15 +164,16 @@ class DataFileTest extends PHPUnit_Framework_TestCase
     $dw->close();
 
     $dr = AvroDataIO::open_file($data_file);
-    $read_datum = array_shift($dr->data());
+    $read_data = $dr->data();
+    $read_data = reset($read_data);
     $dr->close();
-    $this->assertEquals($datum, $read_datum);
+    $this->assertEquals($datum, $read_data);
   }
   public function test_write_read_int_array_round_trip()
   {
     $data_file = $this->add_data_file('data-wr-int-ary.avr');
     $writers_schema = '"int"';
-    $data = array(10, 20, 30, 40, 50, 60, 70);
+    $data = array(10, 20, 30, 40, 50, 60, 70, 567, 89012345);
     $dw = AvroDataIO::open_file($data_file, 'w', $writers_schema);
     foreach ($data as $datum)
       $dw->append($datum);
