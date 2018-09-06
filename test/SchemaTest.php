@@ -542,4 +542,102 @@ class SchemaTest extends PHPUnit_Framework_TestCase
     $schema = AvroSchema::parse($json);
     $this->assertEquals($schema->doc(), "AB is freaky.");
   }
+
+  /**
+   * @return array
+   */
+  function check_valid_datum_provider()
+  {
+    return array(
+      array('{"type": "null"}', null, null),
+      array('{"type": "null"}', 123, "should be null"),
+      array('{"type": "null"}', 0, "should be null"),
+      array('{"type": "null"}', '', "should be null"),
+      array('{"type": "boolean"}', false, null),
+      array('{"type": "boolean"}', true, null),
+      array('{"type": "boolean"}', 0, "should be boolean"),
+      array('{"type": "boolean"}', 1, "should be boolean"),
+      array('{"type": "boolean"}', '', "should be boolean"),
+      array('{"type": "string"}', 'foo', null),
+      array('{"type": "bytes"}', 'foo', null),
+      array('{"type": "string"}', 123, "should be string"),
+      array('{"type": "bytes"}', 123, "should be bytes"),
+      array('{"type": "string"}', array(), "should be string"),
+      array('{"type": "bytes"}', array(), "should be bytes"),
+      array('{"type": "int"}', 123, null),
+      array('{"type": "int"}', "foo", "should be int (signed 32bit)"),
+      array('{"type": "int"}', 123.456, "should be int (signed 32bit)"),
+      array('{"type": "int"}', 1<<33, "should be int (signed 32bit)"),
+      array('{"type": "long"}', 123, null),
+      array('{"type": "long"}', 1<<33, null),
+      array('{"type": "long"}', "foo", "should be long (signed 64bit)"),
+      array('{"type": "long"}', 123.456, "should be long (signed 64bit)"),
+      array('{"type": "float"}', 123, null),
+      array('{"type": "float"}', 123.456, null),
+      array('{"type": "float"}', '123.456', "should be float"),
+      array('{"type": "double"}', 123, null),
+      array('{"type": "double"}', 123.456, null),
+      array('{"type": "double"}', '123.456', "should be double"),
+      array('{"type": "array", "items": "int"}', array(1,2,3), null),
+      array('{"type": "array", "items": "int"}', 123, 'should be array'),
+      array('{"type": "array", "items": "int"}', array(1, 2.3), 'array with invalid item: should be int (signed 32bit)'),
+      array('{"type": "map", "values": "int"}', array('foo' => 123), null),
+      array('{"type": "map", "values": "int"}', array('foo' => 1, 'bar' => 2), null),
+      array('{"type": "map", "values": "int"}', 123, 'should be array (map)'),
+      array('{"type": "map", "values": "int"}', array(1 => 2), 'array with non-string key'),
+      array('{"type": "map", "values": "int"}', array('foo' => '123'), 'map with invalid item: should be int (signed 32bit)'),
+      array('["int", "null"]', 123, null),
+      array('["int", "null"]', null, null),
+      array('["int", "null"]', 123.456, "union schema mismatch"),
+      array('["int", "null"]', array(1, 2), "union schema mismatch"),
+      array('{"type": "enum", "name": "AB", "symbols": ["A", "B"]}', "A", null),
+      array('{"type": "enum", "name": "AB", "symbols": ["A", "B"]}', "B", null),
+      array('{"type": "enum", "name": "AB", "symbols": ["A", "B"]}', "C", "enum symbol mismatch"),
+      array('{"type": "enum", "name": "AB", "symbols": ["A", "B"]}', 123, "enum symbol mismatch"),
+      array('{"type": "enum", "name": "AB", "symbols": ["A", "B"]}', array("A"), "enum symbol mismatch"),
+      array('{"type": "fixed", "name": "x", "size": 3}', "abc", null),
+      array('{"type": "fixed", "name": "x", "size": 3}', "ab", "should string length 3"),
+      array('{"type": "fixed", "name": "x", "size": 3}', "abcd", "should string length 3"),
+      array('{"type": "fixed", "name": "x", "size": 3}', 123, "should string length 3"),
+      array(
+        '{"type": "record", "name": "r", "fields": [{"name": "a", "type": "int"}, {"name": "b", "type": "string"}]}',
+        array("a" => 123, "b" => "foo"), null
+      ),
+      array(
+        '{"type": "record", "name": "r", "fields": [{"name": "a", "type": "int"}, {"name": "b", "type": "string"}]}',
+        123, "should be record (array)",
+      ),
+      array(
+        '{"type": "record", "name": "r", "fields": [{"name": "a", "type": "int"}, {"name": "b", "type": "string"}]}',
+        array(123, "foo"), "missing field 'a'",
+      ),
+      array(
+        '{"type": "record", "name": "r", "fields": [{"name": "a", "type": "int"}, {"name": "b", "type": "string"}]}',
+        array("a" => 123, "foo"), "missing field 'b'",
+      ),
+      array(
+        '{"type": "record", "name": "r", "fields": [{"name": "a", "type": "int"}, {"name": "b", "type": "string"}]}',
+        array("a" => "123", "b" => "foo"), "record field 'a': should be int (signed 32bit)"
+      ),
+      array(
+        '{"type": "record", "name": "r", "fields": [{"name": "a", "type": "int"}, {"name": "b", "type": "string"}]}',
+        array("a" => 123, "b" => null), "record field 'b': should be string"
+      ),
+      array(
+        '{"type": "record", "name": "r", "fields": [{"name": "a", "type": "int"}, {"name": "b", "type": ["null", "string"]}]}',
+        array("a" => 123, "b" => null), null
+      ),
+    );
+  }
+
+  /**
+   * @dataProvider check_valid_datum_provider
+   */
+  function  test_check_valid_datum($schema_json, $datum, $expected_problem)
+  {
+    $schema = AvroSchema::parse($schema_json);
+    $problem = AvroSchema::check_valid_datum($schema, $datum);
+    $this->assertEquals($expected_problem, $problem);
+  }
+
 }

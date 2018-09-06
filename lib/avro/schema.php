@@ -374,7 +374,7 @@ class AvroSchema
         return new AvroUnionSchema($avro, $default_namespace, $schemata);
       else
         throw new AvroSchemaParseException(sprintf('Undefined type: %s',
-                                                   $type));
+                                                   var_export($type, true)));
     }
     elseif (self::is_primitive_type($avro))
       return new AvroPrimitiveSchema($avro);
@@ -393,66 +393,85 @@ class AvroSchema
    */
   public static function is_valid_datum($expected_schema, $datum)
   {
+    return is_null(self::check_valid_datum($expected_schema, $datum));
+  }
+
+  /**
+   * @param $expected_schema
+   * @param $datum
+   * @return null|string null if $datum is valid for $expected_schema
+   *                  and a string describing the problem otherwise.
+   * @throws AvroSchemaParseException
+   */
+  public static function check_valid_datum($expected_schema, $datum)
+  {
     switch($expected_schema->type)
     {
       case self::NULL_TYPE:
-        return is_null($datum);
+        return is_null($datum) ? null : "should be null";
       case self::BOOLEAN_TYPE:
-        return is_bool($datum);
+        return is_bool($datum) ? null : "should be boolean";
       case self::STRING_TYPE:
       case self::BYTES_TYPE:
-        return is_string($datum);
+        return is_string($datum) ? null : "should be {$expected_schema->type}";
       case self::INT_TYPE:
         return (is_int($datum)
                 && (self::INT_MIN_VALUE <= $datum)
-                && ($datum <= self::INT_MAX_VALUE));
+                && ($datum <= self::INT_MAX_VALUE)) ? null : "should be int (signed 32bit)";
       case self::LONG_TYPE:
         return (is_int($datum)
                 && (self::LONG_MIN_VALUE <= $datum)
-                && ($datum <= self::LONG_MAX_VALUE));
+                && ($datum <= self::LONG_MAX_VALUE)) ? null : "should be long (signed 64bit)";
       case self::FLOAT_TYPE:
       case self::DOUBLE_TYPE:
-        return (is_float($datum) || is_int($datum));
+        return (is_float($datum) || is_int($datum)) ? null : "should be {$expected_schema->type}";
       case self::ARRAY_SCHEMA:
-        if (is_array($datum))
+        if (!is_array($datum))
+          return "should be array";
+        foreach ($datum as $d)
         {
-          foreach ($datum as $d)
-            if (!self::is_valid_datum($expected_schema->items(), $d))
-              return false;
-          return true;
+          $problem = self::check_valid_datum($expected_schema->items(), $d);
+          if ($problem)
+            return "array with invalid item: " . $problem;
         }
-        return false;
+        return null;
       case self::MAP_SCHEMA:
-        if (is_array($datum))
+        if (!is_array($datum))
+          return "should be array (map)";
+        foreach ($datum as $k => $v)
         {
-          foreach ($datum as $k => $v)
-            if (!is_string($k)
-                || !self::is_valid_datum($expected_schema->values(), $v))
-              return false;
-          return true;
+          if (!is_string($k))
+            return "array with non-string key";
+          $problem = self::check_valid_datum($expected_schema->values(), $v);
+          if ($problem)
+            return "map with invalid item: " . $problem;
         }
-        return false;
+        return null;
       case self::UNION_SCHEMA:
         foreach ($expected_schema->schemas() as $schema)
-          if (self::is_valid_datum($schema, $datum))
-            return true;
-        return false;
+          if (is_null(self::check_valid_datum($schema, $datum)))
+            return null;
+        return "union schema mismatch";
       case self::ENUM_SCHEMA:
-        return in_array($datum, $expected_schema->symbols());
+        return in_array($datum, $expected_schema->symbols()) ? null : "enum symbol mismatch";
       case self::FIXED_SCHEMA:
         return (is_string($datum)
-                && (strlen($datum) == $expected_schema->size()));
+                && (strlen($datum) == $expected_schema->size())) ? null : "should string length {$expected_schema->size()}";
       case self::RECORD_SCHEMA:
       case self::ERROR_SCHEMA:
       case self::REQUEST_SCHEMA:
-        if (is_array($datum))
+        if (!is_array($datum))
+          return "should be record (array)";
+        foreach ($expected_schema->fields() as $field)
         {
-          foreach ($expected_schema->fields() as $field)
-            if (!array_key_exists($field->name(), $datum) || !self::is_valid_datum($field->type(), $datum[$field->name()]))
-              return false;
-          return true;
+          $name = $field->name();
+          if (!array_key_exists($name, $datum))
+            return "missing field '$name'";
+          $problem = self::check_valid_datum($field->type(), $datum[$name]);
+          if ($problem)
+            return "record field '$name': ". $problem;
         }
-        return false;
+        return null;
       default:
         throw new AvroSchemaParseException(
           sprintf('%s is not allowed.', $expected_schema));
