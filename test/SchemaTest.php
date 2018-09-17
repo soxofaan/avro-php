@@ -445,6 +445,41 @@ class SchemaTest extends PHPUnit_Framework_TestCase
     $this->assertEquals(json_decode('"boolean"'), 'boolean');
   }
 
+  function parse_bad_json_provider()
+  {
+    return array(
+      // Valid
+      array('{"type": "array", "items": "long"}', null),
+      // Trailing comma
+      array('{"type": "array", "items": "long", }', "JSON decode error 4: Syntax error"),
+      // Wrong quotes
+      array("{'type': 'array', 'items': 'long'}", "JSON decode error 4: Syntax error"),
+      // Binary data
+      array("\x11\x07", "JSON decode error 3: Control character error, possibly incorrectly encoded"),
+    );
+  }
+
+  /**
+   * @dataProvider parse_bad_json_provider
+   */
+  function test_parse_bad_json($json, $failure)
+  {
+    if (defined('HHVM_VERSION'))
+    {
+      // Under HHVM, json_decode is not as strict and feature complete as standard PHP.
+      $this->markTestSkipped();
+    }
+    try
+    {
+      $schema = AvroSchema::parse($json);
+      $this->assertEquals($failure, null);
+    }
+    catch (AvroSchemaParseException $e)
+    {
+      $this->assertEquals($failure, $e->getMessage());
+    }
+  }
+
   /**
    * @return array
    */

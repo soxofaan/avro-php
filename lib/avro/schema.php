@@ -298,7 +298,10 @@ class AvroSchema
   public static function parse($json)
   {
     $schemata = new AvroNamedSchemata();
-    return self::real_parse(json_decode($json, true), null, $schemata);
+    $avro = json_decode($json, true);
+    if (json_last_error() !== JSON_ERROR_NONE)
+      throw new AvroSchemaParseException("JSON decode error " . json_last_error() . ": " . json_last_error_msg());
+    return self::real_parse($avro, null, $schemata);
   }
 
   /**
