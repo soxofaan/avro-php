@@ -482,4 +482,22 @@ class SchemaTest extends PHPUnit_Framework_TestCase
     }
   }
 
+  function test_record_doc()
+  {
+    $json = '{"type": "record", "name": "foo", "doc": "Foo doc.",
+              "fields": [{"name": "bar", "type": "int", "doc": "Bar doc."}]}';
+    $schema = AvroSchema::parse($json);
+    $this->assertEquals($schema->doc(), "Foo doc.");
+    $fields = $schema->fields();
+    $this->assertCount(1, $fields);
+    $bar = $fields[0];
+    $this->assertEquals($bar->doc(), "Bar doc.");
+  }
+
+  function test_enum_doc()
+  {
+    $json = '{"type": "enum", "name": "blood_types", "doc": "AB is freaky.", "symbols": ["A", "AB", "B", "O"]}';
+    $schema = AvroSchema::parse($json);
+    $this->assertEquals($schema->doc(), "AB is freaky.");
+  }
 }
