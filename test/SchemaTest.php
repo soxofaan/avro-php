@@ -414,6 +414,12 @@ class SchemaTest extends PHPUnit_Framework_TestCase
         '{"type":"record","name":"foo","fields":[{"name":"bar","type":["null","string"],"default":null}]}',
         true,
         '{"type":"record","name":"foo","fields":[{"name":"bar","type":["null","string"],"default":null}]}');
+    // Don't lose the "doc" attributes of record fields.
+    $record_examples []= new SchemaExample(
+      '{"type":"record","name":"foo","fields":[{"name":"bar","type":["null","string"],"doc":"Bar name."}]}',
+      true,
+      '{"type":"record","name":"foo","fields":[{"name":"bar","type":["null","string"],"doc":"Bar name."}]}');
+
 
     self::$examples = array_merge($primitive_examples,
                                   $fixed_examples,
@@ -506,6 +512,7 @@ class SchemaTest extends PHPUnit_Framework_TestCase
       $this->assertTrue($example->is_valid,
                         sprintf("schema_string: %s\n",
                                 $schema_string));
+      // strval() roughly does to_avro() + json_encode()
       $this->assertEquals($normalized_schema_string, strval($schema));
     }
     catch (AvroSchemaParseException $e)
